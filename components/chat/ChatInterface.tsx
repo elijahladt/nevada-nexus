@@ -116,17 +116,31 @@ export function ChatInterface() {
     );
 
     try {
-      const res = await fetch('/api/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: textToSend, language }),
-      });
-
-      if (!res.ok) {
-        throw new Error('Failed to get navigator response');
+      let data: any = null;
+      try {
+        const res = await fetch('/api/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ message: textToSend, language }),
+        });
+        if (res.ok) {
+          data = await res.json();
+        }
+      } catch {
+        // Fallback for static hosting (e.g. GitHub Pages)
       }
 
-      const data = await res.json();
+      if (!data) {
+        const { runOrchestrator } = await import('@/agents/orchestrator');
+        const result = await runOrchestrator(textToSend, language, (progress) => {
+          setCurrentProgressState(progress.message);
+        });
+        data = {
+          ...result,
+          reply: result.responseMessage,
+          detectedLanguage: result.intakeResult.language,
+        };
+      }
 
       // Save case to local storage for My Case tab
       if (data.actionPlan) {

@@ -117,20 +117,35 @@ export default function DirectIntakeForm() {
         language: lang,
       };
 
-      const res = await fetch('/api/intake/direct', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
+      let submission: any = null;
+      try {
+        const res = await fetch('/api/intake/direct', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (data.success) {
+            submission = data.submission;
+          }
+        }
+      } catch {
+        // Fallback for static hosting (e.g. GitHub Pages)
+      }
 
-      const data = await res.json();
-      if (res.ok && data.success) {
-        setSubmissionResult(data.submission);
+      if (!submission) {
+        const { submitDirectElectronicIntake } = await import('@/lib/intake/directIntake');
+        submission = submitDirectElectronicIntake(payload);
+      }
+
+      if (submission) {
+        setSubmissionResult(submission);
       } else {
-        setErrorMessage(data.error || 'Failed to submit electronic intake.');
+        setErrorMessage('Failed to submit electronic intake.');
       }
     } catch (err: any) {
-      setErrorMessage(err?.message || 'Network error submitting direct electronic intake.');
+      setErrorMessage(err?.message || 'Error submitting direct electronic intake.');
     } finally {
       setSubmitting(false);
     }

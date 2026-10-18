@@ -38,16 +38,30 @@ export default function ReferralTrackingDashboard() {
     setLoading(true);
     setErrorMsg(null);
     try {
-      const res = await fetch(`/api/tracking/${encodeURIComponent(code.trim().toUpperCase())}`);
-      const data = await res.json();
-      if (res.ok && data.intake) {
-        setIntake(data.intake);
+      let foundIntake: any = null;
+      try {
+        const res = await fetch(`/api/tracking/${encodeURIComponent(code.trim().toUpperCase())}`);
+        if (res.ok) {
+          const data = await res.json();
+          if (data.intake) foundIntake = data.intake;
+        }
+      } catch {
+        // Fallback for static hosting (e.g. GitHub Pages)
+      }
+
+      if (!foundIntake) {
+        const { getIntakeByConfirmationCode } = await import('@/lib/intake/directIntake');
+        foundIntake = getIntakeByConfirmationCode(code.trim().toUpperCase());
+      }
+
+      if (foundIntake) {
+        setIntake(foundIntake);
       } else {
         setIntake(null);
-        setErrorMsg(data.message || `No intake record found matching "${code}".`);
+        setErrorMsg(`No electronic intake record was found matching confirmation code "${code}".`);
       }
     } catch (err: any) {
-      setErrorMsg('Network error checking referral tracking code.');
+      setErrorMsg('Error retrieving referral tracking file.');
     } finally {
       setLoading(false);
     }
